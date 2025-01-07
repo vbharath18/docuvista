@@ -1,0 +1,16 @@
+crewai[tools]
+ipywidgets
+matplotlib
+pandas
+seaborn
+tqdm
+plotly
+streamlit
+poetry
+tiktoken
+azure-ai-documentintelligence
+azure-search-documents
+python-dotenv 
+azure-identity
+streamlit-pdf-viewer
+PyMuPDF
