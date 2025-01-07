@@ -198,7 +198,7 @@ def process_with_crew():
     crew = Crew(
         agents=[csv_agent, csv_agent],
         tasks=[create_CSV, add_sentiment],
-        verbose=True,
+        verbose=False,
     )
     
     return crew.kickoff()
