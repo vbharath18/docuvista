@@ -223,7 +223,7 @@ def setup_rag(document_splits=None):
     vector_store = AzureSearch(
         azure_search_endpoint=vector_store_address,
         azure_search_key=vector_store_password,
-        index_name="langchain-vector-demo",
+        index_name="healthrecords",
         embedding_function=embeddings.embed_query,
     )
     
