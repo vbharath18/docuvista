@@ -96,6 +96,9 @@ def process_pdf_for_embedding(file_path: str):
 # Add new helper functions for document processing
 def process_uploaded_pdf(uploaded_file):
     """Process uploaded PDF using Azure Document Intelligence"""
+    # Ensure the data directory exists
+    os.makedirs("./data", exist_ok=True)
+    
     # Save uploaded file temporarily
     temp_path = f"./data/temp_{uploaded_file.name}"
     with open(temp_path, "wb") as f:
