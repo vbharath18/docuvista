@@ -6,18 +6,16 @@ import fitz  # PyMuPDF
 import os
 import base64
 from langchain import hub
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores import AzureSearch
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from dotenv import load_dotenv
-from langchain_community.document_loaders import AzureAIDocumentIntelligenceLoader
-from langchain.text_splitter import MarkdownHeaderTextSplitter
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
-from azure.ai.documentintelligence.models import AnalyzeResult, AnalyzeOutputOption
+from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from crewai import Agent, Task, Crew, LLM
 from crewai_tools import FileReadTool, FileWriterTool
+from utils import process_pdf_for_embeddings, setup_rag
 
 # Load environment variables
 load_dotenv()
@@ -60,38 +58,6 @@ def search_pdf(doc: fitz.Document, keyword: str):
                 highlight.update()
             results.append(page_num + 1)
     return results
-
-def process_pdf_for_embedding(file_path: str):
-    """Process PDF document for embedding using Azure Document Intelligence"""
-    try:
-        doc_intelligence_endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
-        doc_intelligence_key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
-        
-        # Load document using Azure Document Intelligence
-        loader = AzureAIDocumentIntelligenceLoader(
-            file_path=file_path,
-            api_key=doc_intelligence_key,
-            api_endpoint=doc_intelligence_endpoint,
-            api_model="prebuilt-layout"
-        )
-        docs = loader.load()
-        
-        # Split document into chunks
-        headers_to_split_on = [
-            ("#", "Header 1"),
-            ("##", "Header 2"),
-            ("###", "Header 3"),
-        ]
-        text_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-        
-        docs_string = docs[0].page_content
-        splits = text_splitter.split_text(docs_string)
-        
-        return splits
-    except Exception as e:
-        logging.error(f"Error processing PDF for embedding: {e}")
-        st.error(f"Error processing PDF for embedding: {e}")
-        return None
 
 # Add new helper functions for document processing
 def process_uploaded_pdf(uploaded_file):
@@ -156,9 +122,9 @@ def process_with_crew():
     file_writer_tool = FileWriterTool()
     
     csv_agent = Agent(
-        role="Extract, process data and record data",
-        goal="Extract test results as instructed. The result MUST be valid CSV. Read right to left, treat each table as a separately.",
-        backstory="You are a lab test results data extraction agent",
+        role="Data Extraction Agent",
+        goal="Extract test results by reading through the document. The result MUST be valid CSV.",
+        backstory="You are a medical data extraction agent",
         tools=[file_read_tool],
         llm=llm,
     )
@@ -169,13 +135,13 @@ def process_with_crew():
             Your output should be in CSV format. Respond without using Markdown code fences.
             Your task is to:
                Ensure that string data is enclosed in quotes.
-               Each item in the list should have its columns populated as follows. No additional columns should be added.
+               Each item in the list should have its columns populated as follows. 
                     "Test type": Name of the test type is found after Patient Information,                
                     "Test": Name of the test,
                     "Result": Result of the test,
                     "Unit": Unit of the test,
                     "Interval": Biological reference interval,
-                If a column is not applicable, leave it empty.
+                If a column is not applicable, leave it empty. No additional columns should be added.
             """,
         expected_output="A correctly formatted CSV data structure with only",
         agent=csv_agent,
@@ -183,10 +149,10 @@ def process_with_crew():
         tools=[file_read_tool]
     )
     
-    add_sentiment = Task(
+    add_observation = Task(
         description="""
-            Analyse CSV data and calculate the sentiment of each test results in
-            the 'Sentiment' column. Add a new column to the CSV that records that sentiment.
+            Analyse CSV data and add your observation the 'Observation' column. 
+            Add a new column to the CSV that records that observation.
             Your output should be in CSV format. Respond without using Markdown code fences.
             """,
         expected_output="A correctly formatted CSV data file",
@@ -197,68 +163,17 @@ def process_with_crew():
     
     crew = Crew(
         agents=[csv_agent, csv_agent],
-        tasks=[create_CSV, add_sentiment],
+        tasks=[create_CSV, add_observation],
         verbose=False,
     )
     
     return crew.kickoff()
 
-# --- RAG Setup ---
-def setup_rag(document_splits=None):
-    """Initialize RAG components with document embedding"""
-    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    vector_store_address = os.getenv("AZURE_SEARCH_ENDPOINT")
-    vector_store_password = os.getenv("AZURE_SEARCH_ADMIN_KEY")
-    
-    # Initialize embeddings
-    embeddings = AzureOpenAIEmbeddings(
-        azure_deployment="text-embedding-ada-002",
-        openai_api_version="2023-05-15",
-        azure_endpoint=azure_endpoint,
-        api_key=azure_openai_api_key,
-    )
-    
-    # Initialize vector store
-    vector_store = AzureSearch(
-        azure_search_endpoint=vector_store_address,
-        azure_search_key=vector_store_password,
-        index_name="healthrecords",
-        embedding_function=embeddings.embed_query,
-    )
-    
-    # Add documents to vector store if provided
-    if document_splits:
-        vector_store.add_documents(documents=document_splits)
-    
-    # Initialize retriever and LLM
-    retriever = vector_store.as_retriever(search_type="similarity", k=3)
-    llm = AzureChatOpenAI(
-        openai_api_version="2024-08-01-preview",
-        azure_deployment="gpt-4o-mini",
-        temperature=0,
-    )
-    
-    # Setup RAG chain
-    prompt = hub.pull("rlm/rag-prompt")
-    
-    def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
-    
-    rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    
-    return rag_chain
-
 # Add this cache decorator for RAG setup
 @st.cache_resource
 def get_rag_chain(file_path: str):
     """Cache the RAG chain setup to avoid reprocessing"""
-    document_splits = process_pdf_for_embedding(file_path)
+    document_splits = process_pdf_for_embeddings(file_path)
     return setup_rag(document_splits)
 
 # Add this after the existing helper functions
@@ -278,7 +193,7 @@ def check_required_files():
 # Add this helper function after the other helper functions
 def validate_dataframe(df: pd.DataFrame) -> bool:
     """Validate if DataFrame has required columns for visualization"""
-    required_columns = ["Test", "Test type", "Sentiment"]
+    required_columns = ["Test", "Test type", "Observation"]
     return all(col in df.columns for col in required_columns) and not df.empty
 
 # Modify the app initialization
@@ -359,10 +274,10 @@ with tabs[1]:
                         # Bar Chart
                         fig_bar = px.bar(
                             df,
-                            x="Sentiment",
+                            x="Observation",
                             y="Test",
                             color="Test type",
-                            title="Sentiment Analysis Distribution",
+                            title="Test Analysis Distribution",
                             template="plotly_white",
                             height=300
                         )
@@ -372,9 +287,9 @@ with tabs[1]:
                         # Histogram
                         fig_hist = px.histogram(
                             df,
-                            x="Sentiment",
+                            x="Observation",
                             color="Test type",
-                            title="Sentiment Distribution Analysis",
+                            title="Observation Distribution Analysis",
                             template="plotly_white",
                             height=300
                         )
