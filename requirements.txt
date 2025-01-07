@@ -12,5 +12,4 @@ azure-ai-documentintelligence
 azure-search-documents
 python-dotenv 
 azure-identity
-streamlit-pdf-viewer
 PyMuPDF
