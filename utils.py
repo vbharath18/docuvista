@@ -1,9 +1,7 @@
 import os
 import logging
-from azure.core.credentials import AzureKeyCredential
-from azure.ai.documentintelligence import DocumentIntelligenceClient
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
-from langchain_community.vectorstores import AzureSearch
+from langchain_community.vectorstores import FAISS
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain import hub
@@ -42,11 +40,9 @@ def process_pdf_for_embeddings(file_path: str):
         return None
 
 def setup_rag(document_splits=None):
-    """Initialize RAG components with document embedding"""
+    """Initialize RAG components with document embedding using FAISS"""
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    vector_store_address = os.getenv("AZURE_SEARCH_ENDPOINT")
-    vector_store_password = os.getenv("AZURE_SEARCH_ADMIN_KEY")
     
     # Initialize embeddings
     embeddings = AzureOpenAIEmbeddings(
@@ -56,20 +52,21 @@ def setup_rag(document_splits=None):
         api_key=azure_openai_api_key,
     )
     
-    # Initialize vector store
-    vector_store = AzureSearch(
-        azure_search_endpoint=vector_store_address,
-        azure_search_key=vector_store_password,
-        index_name="healthrecords",
-        embedding_function=embeddings.embed_query,
-    )
-    
-    # Add documents to vector store if provided
+    # Initialize or load FAISS vector store
     if document_splits:
-        vector_store.add_documents(documents=document_splits)
+        vector_store = FAISS.from_documents(document_splits, embeddings)
+        # Optionally save the index
+        vector_store.save_local("faiss_index")
+    else:
+        # Load existing index if available
+        try:
+            vector_store = FAISS.load_local("faiss_index", embeddings)
+        except:
+            # Return None or handle the case when no index exists
+            return None
     
     # Initialize retriever and LLM
-    retriever = vector_store.as_retriever(search_type="similarity", k=3)
+    retriever = vector_store.as_retriever(search_kwargs={"k": 3})
     llm = AzureChatOpenAI(
         openai_api_version="2024-08-01-preview",
         azure_deployment="gpt-4o-mini",

@@ -13,3 +13,4 @@ azure-search-documents
 python-dotenv 
 azure-identity
 PyMuPDF
+faiss-cpu

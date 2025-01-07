@@ -6,7 +6,6 @@ import fitz  # PyMuPDF
 import os
 import base64
 from langchain import hub
-from langchain_community.vectorstores import AzureSearch
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from dotenv import load_dotenv
