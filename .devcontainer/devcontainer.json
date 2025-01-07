@@ -1,7 +1,7 @@
 {
    "build": { "dockerfile": "../Dockerfile" },
   "hostRequirements": {
-    "cpus": 4
+    "cpus": 2
   },
   "customizations": {
     "vscode": {
