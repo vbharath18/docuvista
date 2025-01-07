@@ -1,0 +1,14 @@
+{
+   "build": { "dockerfile": "../Dockerfile" },
+  "hostRequirements": {
+    "cpus": 4
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ]
+    }
+  }
+}
