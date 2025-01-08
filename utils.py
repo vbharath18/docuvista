@@ -9,19 +9,11 @@ from langchain_community.document_loaders import AzureAIDocumentIntelligenceLoad
 from langchain.text_splitter import MarkdownHeaderTextSplitter
 
 def process_pdf_for_embeddings(file_path: str):
-    """Process PDF document for embedding using Azure Document Intelligence"""
+    """Process markdown for embedding using langchain components"""
     try:
-        doc_intelligence_endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
-        doc_intelligence_key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
-        
-        # Load document using Azure Document Intelligence
-        loader = AzureAIDocumentIntelligenceLoader(
-            file_path=file_path,
-            api_key=doc_intelligence_key,
-            api_endpoint=doc_intelligence_endpoint,
-            api_model="prebuilt-layout"
-        )
-        docs = loader.load()
+        # Load markdown file instead of PDF
+        with open("./data/ocr.md", "r") as file:
+            docs_string = file.read()
         
         # Split document into chunks
         headers_to_split_on = [
@@ -31,7 +23,6 @@ def process_pdf_for_embeddings(file_path: str):
         ]
         text_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
         
-        docs_string = docs[0].page_content
         splits = text_splitter.split_text(docs_string)
         
         return splits
