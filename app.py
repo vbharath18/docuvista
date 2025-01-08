@@ -14,7 +14,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from crewai import Agent, Task, Crew, LLM
 from crewai_tools import FileReadTool, FileWriterTool
-from utils import process_pdf_for_embeddings, setup_rag
+from rag_handler import process_pdf_for_embeddings, setup_rag
 
 # Load environment variables
 load_dotenv()
