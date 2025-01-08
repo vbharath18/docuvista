@@ -56,11 +56,11 @@ def setup_rag(document_splits=None):
     if document_splits:
         vector_store = FAISS.from_documents(document_splits, embeddings)
         # Optionally save the index
-        vector_store.save_local("faiss_index")
+        vector_store.save_local("./data/faiss_index")
     else:
         # Load existing index if available
         try:
-            vector_store = FAISS.load_local("faiss_index", embeddings)
+            vector_store = FAISS.load_local("./data/faiss_index", embeddings)
         except:
             # Return None or handle the case when no index exists
             return None
