@@ -5,16 +5,11 @@ import logging
 import fitz  # PyMuPDF
 import os
 import base64
-from langchain import hub
-from langchain.schema import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
 from dotenv import load_dotenv
-from azure.core.credentials import AzureKeyCredential
-from azure.ai.documentintelligence import DocumentIntelligenceClient
-from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from crewai import Agent, Task, Crew, LLM
 from crewai_tools import FileReadTool, FileWriterTool
 from rag_handler import process_pdf_for_embeddings, setup_rag
+from azure_document_processor import process_uploaded_pdf
 
 # Load environment variables
 load_dotenv()
@@ -57,56 +52,6 @@ def search_pdf(doc: fitz.Document, keyword: str):
                 highlight.update()
             results.append(page_num + 1)
     return results
-
-# Add new helper functions for document processing
-def process_uploaded_pdf(uploaded_file):
-    """Process uploaded PDF using Azure Document Intelligence"""
-    # Ensure the data directory exists
-    os.makedirs("./data", exist_ok=True)
-    
-    # Save uploaded file temporarily
-    temp_path = f"./data/temp_{uploaded_file.name}"
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
-    # Initialize Azure Document Intelligence client
-    endpoint = os.environ["AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"]
-    key = os.environ["AZURE_DOCUMENT_INTELLIGENCE_KEY"]
-    client = DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
-    
-    # Process for markdown
-    with open(temp_path, "rb") as f:
-        analyze_request = {
-            "base64Source": base64.b64encode(f.read()).decode("utf-8")
-        }
-        poller = client.begin_analyze_document(
-            "prebuilt-layout", 
-            body=analyze_request,
-            output_content_format="markdown"
-        )
-    result = poller.result()
-    
-    # Save markdown output
-    with open("./data/ocr.md", "w") as f:
-        f.write(result.content)
-    
-    # Process for searchable PDF
-    with open(temp_path, "rb") as f:
-        poller = client.begin_analyze_document(
-            "prebuilt-read",
-            body=f,
-            output=[AnalyzeOutputOption.PDF],
-        )
-    result = poller.result()
-    operation_id = poller.details["operation_id"]
-    
-    response = client.get_analyze_result_pdf(model_id=result.model_id, result_id=operation_id)
-    with open("./data/ocr_searchable.pdf", "wb") as writer:
-        writer.writelines(response)
-    
-    # Clean up temp file
-    os.remove(temp_path)
-    return True
 
 def process_with_crew():
     """Process the markdown file with CrewAI"""
