@@ -165,11 +165,11 @@ with tabs[0]:
             with st.spinner("Processing document..."):
                 try:
                     # Process the uploaded PDF
-                    st.info("Step 1/3: Converting document...")
+                    st.info("Step 1/3: Converting document to OCR format...")
                     success = process_uploaded_pdf(uploaded_file)
                     
                     if success:
-                        st.info("Step 2/3: Extracting data...")
+                        st.info("Step 2/3: Extracting data using agents...")
                         crew_result = process_with_crew()
                         
                         st.info("Step 3/3: Initializing Q&A system...")
