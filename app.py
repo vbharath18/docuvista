@@ -4,7 +4,6 @@ import plotly.express as px
 import logging
 import fitz  # PyMuPDF
 import os
-import base64
 from dotenv import load_dotenv
 from rag_handler import process_pdf_for_embeddings, setup_rag
 from azure_document_processor import process_uploaded_pdf
@@ -52,14 +51,12 @@ def search_pdf(doc: fitz.Document, keyword: str):
             results.append(page_num + 1)
     return results
 
-# Add this cache decorator for RAG setup
 @st.cache_resource
 def get_rag_chain(file_path: str):
     """Cache the RAG chain setup to avoid reprocessing"""
     document_splits = process_pdf_for_embeddings(file_path)
     return setup_rag(document_splits)
 
-# Add this after the existing helper functions
 def reload_data():
     """Reload all data sources"""
     df = load_data("./data/final.csv")
@@ -68,21 +65,14 @@ def reload_data():
         st.session_state.pdf_doc = pdf_doc
     return df, pdf_doc
 
-# Add this after the helper functions
 def check_required_files():
     """Check if required files exist"""
     return os.path.exists("./data/final.csv") and os.path.exists("./data/ocr_searchable.pdf")
 
-# Add this helper function after the other helper functions
 def validate_dataframe(df: pd.DataFrame) -> bool:
     """Validate if DataFrame has required columns for visualization"""
-    # Required columns for basic functionality
     required_columns = ["Test", "Test type", "Observation"]
-    
-    # Required columns for visualizations
     viz_columns = ["Test type", "Test", "Result", "Unit", "Interval", "Observation"]
-    
-    # Check basic required columns
     missing_columns = [col for col in required_columns if col not in df.columns]
     
     if missing_columns:
@@ -91,13 +81,10 @@ def validate_dataframe(df: pd.DataFrame) -> bool:
         st.info(f"Current columns in your data: {', '.join(present_columns)}")
         return False
     
-    # Check visualization columns
     missing_viz_columns = [col for col in viz_columns if col not in df.columns]
-    
     if missing_viz_columns:
         st.warning(f"Some visualization columns are missing: {', '.join(missing_viz_columns)}")
         
-    # Clean column names by removing trailing spaces
     df.columns = df.columns.str.strip()
     
     if df.empty:
@@ -106,7 +93,7 @@ def validate_dataframe(df: pd.DataFrame) -> bool:
         
     return True
 
-# Modify the app initialization
+# --- App Initialization ---
 if 'needs_reload' not in st.session_state:
     st.session_state.needs_reload = True
 if 'files_ready' not in st.session_state:
@@ -132,12 +119,11 @@ with tabs[0]:
         if st.button("Process Document"):
             with st.spinner("Processing document..."):
                 try:
-                    # Process the uploaded PDF
                     st.info("Step 1/3: Converting document to OCR format...")
                     success = process_uploaded_pdf(uploaded_file)
                     
                     if success:
-                        st.info("Step 2/3: Extracting relavant data & generating reports using AI agents...")
+                        st.info("Step 2/3: Extracting relevant data & generating reports using AI agents...")
                         crew_result = process_with_crew()
                         
                         st.info("Step 3/3: Initializing Q&A system...")
@@ -157,13 +143,12 @@ with tabs[1]:
     if not st.session_state.files_ready:
         st.info("Please upload and process a document first using the Upload tab.")
     else:
-        # Initialize df and pdf_doc
-        df = st.session_state.df  # Use session state DataFrame
+        df = st.session_state.df
         pdf_doc = None
         
         if st.session_state.needs_reload:
             df, pdf_doc = reload_data()
-            st.session_state.df = df  # Store DataFrame in session state
+            st.session_state.df = df
             st.session_state.needs_reload = False
         
         report_col, viz_col = st.columns([0.45, 0.55])
@@ -177,14 +162,12 @@ with tabs[1]:
 
         with viz_col:
             st.markdown("### 📈 Key Insights")
-            # clear trail spaces in the dataframe df at the end of each row
             df.columns = df.columns.str.strip()
             if not validate_dataframe(df):
                 st.warning("Cannot create visualizations. Data format is incorrect or missing required columns.")
             else:
                 with st.spinner("Loading charts..."):
                     try:
-                        # Bar Chart
                         fig_bar = px.bar(
                             df,
                             x="Observation",
@@ -197,7 +180,6 @@ with tabs[1]:
                         fig_bar.update_layout(margin=dict(t=30, b=40, l=20, r=20))
                         st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
                         
-                        # Histogram
                         fig_hist = px.histogram(
                             df,
                             x="Observation",
@@ -228,7 +210,6 @@ with tabs[2]:
             st.subheader("Search")
             keyword = st.text_input("Enter keyword to search in PDF:")
             
-            # Use session state for PDF document
             if st.session_state.pdf_doc is None:
                 st.error("PDF document failed to load. Please try uploading the document again.")
             else:
@@ -249,7 +230,6 @@ with tabs[2]:
                                     st.success(f"Found {len(results)} matches")
                                     st.write(f"Keyword found on pages: {results}")
                                     
-                                    # Pagination controls
                                     col1, col2, col3 = st.columns([1, 2, 1])
                                     with col1:
                                         if st.button("Previous", disabled=st.session_state.current_page_idx == 0):
@@ -262,7 +242,6 @@ with tabs[2]:
                                             st.session_state.current_page_idx += 1
                                             st.rerun()
                                     
-                                    # Display current page
                                     current_page_num = results[st.session_state.current_page_idx]
                                     st.write(f"Showing Page {current_page_num}")
                                     try:
@@ -281,7 +260,6 @@ with tabs[2]:
                     if st.session_state.search_results:
                         st.write(f"Keyword found on pages: {st.session_state.search_results}")
                         
-                        # Pagination controls for existing results
                         col1, col2, col3 = st.columns([1, 2, 1])
                         with col1:
                             if st.button("Previous", disabled=st.session_state.current_page_idx == 0):
@@ -294,7 +272,6 @@ with tabs[2]:
                                 st.session_state.current_page_idx += 1
                                 st.rerun()
                         
-                        # Display current page
                         current_page_num = st.session_state.search_results[st.session_state.current_page_idx]
                         st.write(f"Showing Page {current_page_num}")
                         try:
@@ -306,26 +283,20 @@ with tabs[2]:
                 
                 if clear_clicked:
                     try:
-                        # Create a new PDF document without annotations
                         temp_pdf_path = "./data/temp_cleared.pdf"
                         new_doc = fitz.open()
                         
-                        # Copy all pages without annotations
                         for page_num in range(len(st.session_state.pdf_doc)):
                             new_doc.insert_pdf(st.session_state.pdf_doc, from_page=page_num, to_page=page_num)
                         
-                        # Close current document
                         st.session_state.pdf_doc.close()
                         
-                        # Save new document
                         new_doc.save(temp_pdf_path)
                         new_doc.close()
                         
-                        # Replace original with new file
                         if os.path.exists(temp_pdf_path):
                             os.replace(temp_pdf_path, "./data/ocr_searchable.pdf")
                         
-                        # Clear results and reload document
                         st.session_state.search_results = []
                         st.session_state.pdf_doc = fitz.open("./data/ocr_searchable.pdf")
                         st.success("Search results cleared")
@@ -336,7 +307,6 @@ with tabs[2]:
         with qa_col:
             st.subheader("Q&A")
             
-            # Initialize RAG chain when Q&A tab is accessed
             with st.spinner("Processing document for Q&A..."):
                 rag_chain = get_rag_chain("./data/ocr_searchable.pdf")
             
