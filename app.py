@@ -115,6 +115,8 @@ if 'pdf_doc' not in st.session_state:
     st.session_state.pdf_doc = None
 if 'search_results' not in st.session_state:
     st.session_state.search_results = []
+if 'current_page_idx' not in st.session_state:
+    st.session_state.current_page_idx = 0
 if 'df' not in st.session_state:
     st.session_state.df = pd.DataFrame()
 
@@ -175,7 +177,8 @@ with tabs[1]:
 
         with viz_col:
             st.markdown("### 📈 Key Insights")
-            
+            # clear trail spaces in the dataframe df at the end of each row
+            df.columns = df.columns.str.strip()
             if not validate_dataframe(df):
                 st.warning("Cannot create visualizations. Data format is incorrect or missing required columns.")
             else:
@@ -229,10 +232,10 @@ with tabs[2]:
             if st.session_state.pdf_doc is None:
                 st.error("PDF document failed to load. Please try uploading the document again.")
             else:
-                col1, col2 = st.columns([1,1])
-                with col1:
+                search_col1, search_col2 = st.columns([1, 1], gap="small")
+                with search_col1:
                     search_clicked = st.button("Search")
-                with col2:
+                with search_col2:
                     clear_clicked = st.button("Clear Search Results")
                 
                 if search_clicked:
@@ -242,16 +245,32 @@ with tabs[2]:
                                 results = search_pdf(st.session_state.pdf_doc, keyword)
                                 if results:
                                     st.session_state.search_results = results
+                                    st.session_state.current_page_idx = 0
                                     st.success(f"Found {len(results)} matches")
                                     st.write(f"Keyword found on pages: {results}")
-                                    for page_num in results:
-                                        st.write(f"Page {page_num}")
-                                        try:
-                                            page = st.session_state.pdf_doc.load_page(page_num - 1)
-                                            pix = page.get_pixmap()
-                                            st.image(pix.tobytes(), caption=f"Page {page_num}", width=700)
-                                        except Exception as e:
-                                            st.error(f"Error displaying page {page_num}: {str(e)}")
+                                    
+                                    # Pagination controls
+                                    col1, col2, col3 = st.columns([1, 2, 1])
+                                    with col1:
+                                        if st.button("Previous", disabled=st.session_state.current_page_idx == 0):
+                                            st.session_state.current_page_idx -= 1
+                                            st.rerun()
+                                    with col2:
+                                        st.write(f"Page {st.session_state.current_page_idx + 1} of {len(results)}")
+                                    with col3:
+                                        if st.button("Next", disabled=st.session_state.current_page_idx == len(results) - 1):
+                                            st.session_state.current_page_idx += 1
+                                            st.rerun()
+                                    
+                                    # Display current page
+                                    current_page_num = results[st.session_state.current_page_idx]
+                                    st.write(f"Showing Page {current_page_num}")
+                                    try:
+                                        page = st.session_state.pdf_doc.load_page(current_page_num - 1)
+                                        pix = page.get_pixmap()
+                                        st.image(pix.tobytes(), caption=f"Page {current_page_num}", width=700)
+                                    except Exception as e:
+                                        st.error(f"Error displaying page {current_page_num}: {str(e)}")
                                 else:
                                     st.info(f"No matches found for '{keyword}'")
                         except Exception as e:
@@ -261,14 +280,29 @@ with tabs[2]:
                 else:
                     if st.session_state.search_results:
                         st.write(f"Keyword found on pages: {st.session_state.search_results}")
-                        for page_num in st.session_state.search_results:
-                            st.write(f"Page {page_num}")
-                            try:
-                                page = st.session_state.pdf_doc.load_page(page_num - 1)
-                                pix = page.get_pixmap()
-                                st.image(pix.tobytes(), caption=f"Page {page_num}", width=700)
-                            except Exception as e:
-                                st.error(f"Error displaying page {page_num}: {str(e)}")
+                        
+                        # Pagination controls for existing results
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("Previous", disabled=st.session_state.current_page_idx == 0):
+                                st.session_state.current_page_idx -= 1
+                                st.rerun()
+                        with col2:
+                            st.write(f"Page {st.session_state.current_page_idx + 1} of {len(st.session_state.search_results)}")
+                        with col3:
+                            if st.button("Next", disabled=st.session_state.current_page_idx == len(st.session_state.search_results) - 1):
+                                st.session_state.current_page_idx += 1
+                                st.rerun()
+                        
+                        # Display current page
+                        current_page_num = st.session_state.search_results[st.session_state.current_page_idx]
+                        st.write(f"Showing Page {current_page_num}")
+                        try:
+                            page = st.session_state.pdf_doc.load_page(current_page_num - 1)
+                            pix = page.get_pixmap()
+                            st.image(pix.tobytes(), caption=f"Page {current_page_num}", width=700)
+                        except Exception as e:
+                            st.error(f"Error displaying page {current_page_num}: {str(e)}")
                 
                 if clear_clicked:
                     try:
