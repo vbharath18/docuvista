@@ -17,27 +17,27 @@ def process_with_crew():
     file_writer_tool = FileWriterTool()
     
     csv_agent = Agent(
-        role="Data Extraction Agent",
-        goal="Extract test results by reading through the document. The result MUST be valid CSV.",
-        backstory="You are a medical data extraction agent",
+        role="Extract, process data and record data",
+        goal="""Extract tests and results as instructed. The result MUST be valid CSV.""",
+        backstory="""You are a lab test results data extraction agent""",
         tools=[file_read_tool],
         llm=llm,
     )
     
     create_CSV = Task(
-        description="""
-            Analyse './data/ocr.md' the data provided - it is in Markdown format.
-            Your output should be in CSV format. Respond without using code fences.
-            Your task is to:
-               Ensure that string data is enclosed in quotes.
-               Each item in the list should have its columns populated as follows.
-                    "Test type": Name of the test type is found after Patient Information,                
-                    "Test": Name of the test,
-                    "Result": Result of the test,
-                    "Unit": Unit of the test,
-                    "Interval": Biological reference interval,
-                If a column is not applicable, leave it empty. 
-            """,
+        description=""" 
+                Analyse './data/ocr.md' the data provided - it is in Markdown format. 
+                Your output should be in CSV format. Respond without using Markdown code fences.
+                Your task is to:
+                   Ensure that string data is enclosed in quotes.
+                   Each item in the list should have its columns populated as follows. No additional columns should be added.
+                        "Test type": Name of the test type is found after Patient Information,                
+                        "Test": Name of the test, 
+                        "Result": Result of the test, 
+                        "Unit": Unit of the test, 
+                        "Interval": Biological reference interval,
+                    If a column is not applicable, leave it empty.
+                """,
         expected_output="A correctly formatted CSV data structure with only",
         agent=csv_agent,
         output_file="./data/rp.csv",
@@ -45,11 +45,11 @@ def process_with_crew():
     )
     
     add_observation = Task(
-        description="""
-            Analyse CSV data and add your observation the 'Observation' column. 
-            Add a new column to the CSV that records that observation.
-            Your output should be in CSV format. 
-            """,
+        description=""" 
+                Analyse CSV data and calculate the observation of each test results in
+                the 'Observation' column. Add a new column to the CSV that records that sentiment.
+                Your output should be in CSV format. Respond without using Markdown code fences.  
+                """,
         expected_output="A correctly formatted CSV data file",
         agent=csv_agent,
         output_file="./data/final.csv",
