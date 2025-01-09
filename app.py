@@ -229,7 +229,13 @@ with tabs[2]:
             if st.session_state.pdf_doc is None:
                 st.error("PDF document failed to load. Please try uploading the document again.")
             else:
-                if st.button("Search"):
+                col1, col2 = st.columns([1,1])
+                with col1:
+                    search_clicked = st.button("Search")
+                with col2:
+                    clear_clicked = st.button("Clear Search Results")
+                
+                if search_clicked:
                     if keyword:
                         try:
                             with st.spinner("Searching..."):
@@ -264,20 +270,37 @@ with tabs[2]:
                             except Exception as e:
                                 st.error(f"Error displaying page {page_num}: {str(e)}")
                 
-                if st.button("Clear Search Results"):
+                if clear_clicked:
                     try:
+                        # Create a new PDF document without annotations
+                        temp_pdf_path = "./data/temp_cleared.pdf"
+                        new_doc = fitz.open()
+                        
+                        # Copy all pages without annotations
                         for page_num in range(len(st.session_state.pdf_doc)):
-                            page = st.session_state.pdf_doc.load_page(page_num)
-                            for annot in page.annots():
-                                annot.delete()
+                            new_doc.insert_pdf(st.session_state.pdf_doc, from_page=page_num, to_page=page_num)
+                        
+                        # Close current document
+                        st.session_state.pdf_doc.close()
+                        
+                        # Save new document
+                        new_doc.save(temp_pdf_path)
+                        new_doc.close()
+                        
+                        # Replace original with new file
+                        if os.path.exists(temp_pdf_path):
+                            os.replace(temp_pdf_path, "./data/ocr_searchable.pdf")
+                        
+                        # Clear results and reload document
                         st.session_state.search_results = []
+                        st.session_state.pdf_doc = fitz.open("./data/ocr_searchable.pdf")
                         st.success("Search results cleared")
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Error clearing search results: {str(e)}")
         
         with qa_col:
             st.subheader("Q&A")
-            st.write("Ask questions about the document content using RAG")
             
             # Initialize RAG chain when Q&A tab is accessed
             with st.spinner("Processing document for Q&A..."):
