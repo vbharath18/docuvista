@@ -6,10 +6,9 @@ import fitz  # PyMuPDF
 import os
 import base64
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM
-from crewai_tools import FileReadTool, FileWriterTool
 from rag_handler import process_pdf_for_embeddings, setup_rag
 from azure_document_processor import process_uploaded_pdf
+from crewai_processor import process_with_crew
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +24,7 @@ st.set_page_config(layout="wide")
 def load_data(file_path: str) -> pd.DataFrame:
     """Loads data from a CSV file."""
     try:
-        return pd.read_csv(file_path)
+        return pd.read_csv(file_path, on_bad_lines='skip')
     except FileNotFoundError:
         logging.error(f"File not found: {file_path}")
         st.error(f"Data file not found: {file_path}")
@@ -53,66 +52,6 @@ def search_pdf(doc: fitz.Document, keyword: str):
             results.append(page_num + 1)
     return results
 
-def process_with_crew():
-    """Process the markdown file with CrewAI"""
-    llm = LLM(
-        api_version=os.environ.get("AZURE_OPENAI_VERSION"),
-        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT"),
-        base_url=os.environ.get("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.environ.get("AZURE_OPENAI_API_KEY")
-    )
-    
-    file_read_tool = FileReadTool()
-    file_writer_tool = FileWriterTool()
-    
-    csv_agent = Agent(
-        role="Data Extraction Agent",
-        goal="Extract test results by reading through the document. The result MUST be valid CSV.",
-        backstory="You are a medical data extraction agent",
-        tools=[file_read_tool],
-        llm=llm,
-    )
-    
-    create_CSV = Task(
-        description="""
-            Analyse './data/ocr.md' the data provided - it is in Markdown format.
-            Your output should be in CSV format. Respond without using Markdown code fences.
-            Your task is to:
-               Ensure that string data is enclosed in quotes.
-               Each item in the list should have its columns populated as follows. 
-                    "Test type": Name of the test type is found after Patient Information,                
-                    "Test": Name of the test,
-                    "Result": Result of the test,
-                    "Unit": Unit of the test,
-                    "Interval": Biological reference interval,
-                If a column is not applicable, leave it empty. No additional columns should be added.
-            """,
-        expected_output="A correctly formatted CSV data structure with only",
-        agent=csv_agent,
-        output_file="./data/rp.csv",
-        tools=[file_read_tool]
-    )
-    
-    add_observation = Task(
-        description="""
-            Analyse CSV data and add your observation the 'Observation' column. 
-            Add a new column to the CSV that records that observation.
-            Your output should be in CSV format. Respond without using Markdown code fences.
-            """,
-        expected_output="A correctly formatted CSV data file",
-        agent=csv_agent,
-        output_file="./data/op.csv",
-        tools=[file_read_tool]
-    )
-    
-    crew = Crew(
-        agents=[csv_agent, csv_agent],
-        tasks=[create_CSV, add_observation],
-        verbose=False,
-    )
-    
-    return crew.kickoff()
-
 # Add this cache decorator for RAG setup
 @st.cache_resource
 def get_rag_chain(file_path: str):
@@ -123,7 +62,7 @@ def get_rag_chain(file_path: str):
 # Add this after the existing helper functions
 def reload_data():
     """Reload all data sources"""
-    df = load_data("./data/op.csv")
+    df = load_data("./data/final.csv")
     pdf_doc = load_pdf("./data/ocr_searchable.pdf")
     if pdf_doc is not None:
         st.session_state.pdf_doc = pdf_doc
@@ -132,13 +71,40 @@ def reload_data():
 # Add this after the helper functions
 def check_required_files():
     """Check if required files exist"""
-    return os.path.exists("./data/op.csv") and os.path.exists("./data/ocr_searchable.pdf")
+    return os.path.exists("./data/final.csv") and os.path.exists("./data/ocr_searchable.pdf")
 
 # Add this helper function after the other helper functions
 def validate_dataframe(df: pd.DataFrame) -> bool:
     """Validate if DataFrame has required columns for visualization"""
+    # Required columns for basic functionality
     required_columns = ["Test", "Test type", "Observation"]
-    return all(col in df.columns for col in required_columns) and not df.empty
+    
+    # Required columns for visualizations
+    viz_columns = ["Test type", "Test", "Result", "Unit", "Interval", "Observation"]
+    
+    # Check basic required columns
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        present_columns = df.columns.tolist()
+        st.error(f"Missing required columns: {', '.join(missing_columns)}")
+        st.info(f"Current columns in your data: {', '.join(present_columns)}")
+        return False
+    
+    # Check visualization columns
+    missing_viz_columns = [col for col in viz_columns if col not in df.columns]
+    
+    if missing_viz_columns:
+        st.warning(f"Some visualization columns are missing: {', '.join(missing_viz_columns)}")
+        
+    # Clean column names by removing trailing spaces
+    df.columns = df.columns.str.strip()
+    
+    if df.empty:
+        st.error("DataFrame is empty")
+        return False
+        
+    return True
 
 # Modify the app initialization
 if 'needs_reload' not in st.session_state:
@@ -153,7 +119,7 @@ if 'df' not in st.session_state:
     st.session_state.df = pd.DataFrame()
 
 # --- Tabs ---
-tabs = st.tabs(["Upload", "Report", "Search", "Q&A"])
+tabs = st.tabs(["Upload", "Report", "Triage"])
 
 # --- Upload ---
 with tabs[0]:
@@ -169,7 +135,7 @@ with tabs[0]:
                     success = process_uploaded_pdf(uploaded_file)
                     
                     if success:
-                        st.info("Step 2/3: Extracting data using agents...")
+                        st.info("Step 2/3: Extracting relavant data & generating reports using AI agents...")
                         crew_result = process_with_crew()
                         
                         st.info("Step 3/3: Initializing Q&A system...")
@@ -242,7 +208,7 @@ with tabs[1]:
                     except Exception as e:
                         st.error(f"Error creating visualizations: {str(e)}")
 
-# --- Search ---
+# --- Triage ---
 with tabs[2]:
     if not st.session_state.files_ready:
         st.info("Please upload and process a document first using the Upload tab.")
@@ -251,15 +217,18 @@ with tabs[2]:
             _, _ = reload_data()
             st.session_state.needs_reload = False
         
-        st.header("Search")
-        keyword = st.text_input("Enter keyword to search in PDF:")
+        st.header("Triage")
         
-        # Use session state for PDF document
-        if st.session_state.pdf_doc is None:
-            st.error("PDF document failed to load. Please try uploading the document again.")
-        else:
-            col1, col2 = st.columns(2)
-            with col1:
+        search_col, qa_col = st.columns(2)
+        
+        with search_col:
+            st.subheader("Search")
+            keyword = st.text_input("Enter keyword to search in PDF:")
+            
+            # Use session state for PDF document
+            if st.session_state.pdf_doc is None:
+                st.error("PDF document failed to load. Please try uploading the document again.")
+            else:
                 if st.button("Search"):
                     if keyword:
                         try:
@@ -294,8 +263,7 @@ with tabs[2]:
                                 st.image(pix.tobytes(), caption=f"Page {page_num}", width=700)
                             except Exception as e:
                                 st.error(f"Error displaying page {page_num}: {str(e)}")
-            
-            with col2:
+                
                 if st.button("Clear Search Results"):
                     try:
                         for page_num in range(len(st.session_state.pdf_doc)):
@@ -306,27 +274,23 @@ with tabs[2]:
                         st.success("Search results cleared")
                     except Exception as e:
                         st.error(f"Error clearing search results: {str(e)}")
-
-# --- Q&A ---
-with tabs[3]:
-    if not st.session_state.files_ready:
-        st.info("Please upload and process a document first using the Upload tab.")
-    else:
-        st.header("Q&A")
-        st.write("Ask questions about the document content using RAG")
         
-        # Initialize RAG chain when Q&A tab is accessed
-        with st.spinner("Processing document for Q&A..."):
-            rag_chain = get_rag_chain("./data/ocr_searchable.pdf")
-        
-        question = st.text_input("Enter your question:")
-        if st.button("Get Answer"):
-            if question:
-                with st.spinner("Generating answer..."):
-                    try:
-                        answer = rag_chain.invoke(question)
-                        st.write("Answer:", answer)
-                    except Exception as e:
-                        st.error(f"Error generating answer: {str(e)}")
-            else:
-                st.warning("Please enter a question")
+        with qa_col:
+            st.subheader("Q&A")
+            st.write("Ask questions about the document content using RAG")
+            
+            # Initialize RAG chain when Q&A tab is accessed
+            with st.spinner("Processing document for Q&A..."):
+                rag_chain = get_rag_chain("./data/ocr_searchable.pdf")
+            
+            question = st.text_input("Enter your question:")
+            if st.button("Get Answer"):
+                if question:
+                    with st.spinner("Generating answer..."):
+                        try:
+                            answer = rag_chain.invoke(question)
+                            st.write("Answer:", answer)
+                        except Exception as e:
+                            st.error(f"Error generating answer: {str(e)}")
+                else:
+                    st.warning("Please enter a question")
