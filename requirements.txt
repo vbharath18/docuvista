@@ -1,4 +1,5 @@
-crewai[tools]
+crewai==0.86.0
+crewai-tools==0.17.0
 ipywidgets
 matplotlib
 pandas
