@@ -1,31 +1,43 @@
 import os
 import logging
+import fitz  # PyMuPDF
+from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain import hub
 from langchain_community.document_loaders import AzureAIDocumentIntelligenceLoader
-from langchain.text_splitter import MarkdownHeaderTextSplitter
 
 def process_pdf_for_embeddings(file_path: str):
-    """Process markdown for embedding using langchain components"""
+    """Process PDF for embedding using langchain components"""
     try:
-        # Load markdown file instead of PDF
-        with open("./data/ocr.md", "r") as file:
-            docs_string = file.read()
+        # Open the PDF file
+        pdf_document = fitz.open(file_path)
         
-        # Split document into chunks
-        headers_to_split_on = [
-            ("#", "Header 1"),
-            ("##", "Header 2"),
-            ("###", "Header 3"),
-        ]
-        text_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+        # Extract text from each page
+        text_content = []
+        for page_num in range(len(pdf_document)):
+            page = pdf_document[page_num]
+            text_content.append(page.get_text())
         
-        splits = text_splitter.split_text(docs_string)
+        # Combine all text
+        full_text = "\n\n".join(text_content)
         
-        return splits
+        # Create text splitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=100,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        
+        # Split text into chunks
+        texts = text_splitter.create_documents([full_text])
+        
+        pdf_document.close()
+        return texts
     except Exception as e:
         logging.error(f"Error processing PDF for embedding: {e}")
         return None
