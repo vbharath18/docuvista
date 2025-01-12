@@ -1,0 +1,9 @@
+__pycache__/azure_document_processor.cpython-311.pyc
+__pycache__/crewai_processor.cpython-311.pyc
+__pycache__/rag_handler.cpython-311.pyc
+data/final.csv
+data/ocr_searchable.pdf
+data/ocr.md
+data/rp.csv
+data/faiss_index/index.faiss
+data/faiss_index/index.pkl
