@@ -106,6 +106,8 @@ if 'current_page_idx' not in st.session_state:
     st.session_state.current_page_idx = 0
 if 'df' not in st.session_state:
     st.session_state.df = pd.DataFrame()
+if 'answer' not in st.session_state:
+    st.session_state.answer = ""
 
 # --- Tabs ---
 tabs = st.tabs(["Upload", "Report", "Triage"])
@@ -315,9 +317,11 @@ with tabs[2]:
                 if question:
                     with st.spinner("Generating answer..."):
                         try:
-                            answer = rag_chain.invoke(question)
-                            st.write("Answer:", answer)
+                            st.session_state.answer = rag_chain.invoke(question)
+                            st.write("Answer:", st.session_state.answer)
                         except Exception as e:
                             st.error(f"Error generating answer: {str(e)}")
                 else:
                     st.warning("Please enter a question")
+            elif st.session_state.answer:
+                st.write("Answer:", st.session_state.answer)
