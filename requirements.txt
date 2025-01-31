@@ -11,7 +11,16 @@ poetry
 tiktoken
 azure-ai-documentintelligence
 azure-search-documents
-python-dotenv 
+python-dotenv
 azure-identity
 PyMuPDF
 faiss-cpu
+autogen-core
+autogen-ext[openai]
+autogen-ext[azure]
+autogen-agentchat
+yfinance
+pytz
+numpy
+requests
+bs4
