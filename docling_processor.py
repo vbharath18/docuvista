@@ -28,7 +28,10 @@ def main():
     pipeline_options.do_ocr = True
     pipeline_options.do_table_structure = True
     pipeline_options.table_structure_options.do_cell_matching = True
-    pipeline_options.ocr_options = TesseractCliOcrOptions(force_full_page_ocr=True)
+    pipeline_options.ocr_options = TesseractCliOcrOptions(
+        force_full_page_ocr=True, 
+        lang=["eng"]
+    )
     pipeline_options.accelerator_options = AcceleratorOptions(
          num_threads=8, device=AcceleratorDevice.AUTO
     )
@@ -55,7 +58,7 @@ def main():
 
     # Export Text format:
     with (output_dir / f"{doc_filename}.txt").open("w", encoding="utf-8") as fp:
-        fp.write(conv_result.document._export_to_indented_text())
+        fp.write(conv_result.document.export_to_text())
 
     # Export Markdown format:
     with (output_dir / f"{doc_filename}.md").open("w", encoding="utf-8") as fp:
