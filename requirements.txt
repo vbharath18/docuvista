@@ -24,3 +24,4 @@ pytz
 numpy
 requests
 bs4
+docling
