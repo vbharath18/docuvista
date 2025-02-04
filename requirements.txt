@@ -16,8 +16,7 @@ azure-identity
 PyMuPDF
 faiss-cpu
 autogen-core
-autogen-ext[openai]
-autogen-ext[azure]
+autogen-ext
 autogen-agentchat
 yfinance
 pytz

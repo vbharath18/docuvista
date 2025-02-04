@@ -5,8 +5,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
         sudo\
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        libtesseract-dev \
+        libleptonica-dev \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+RUN TESSDATA_PREFIX=$(dpkg -L tesseract-ocr-eng | grep tessdata$) \
+    && echo "export TESSDATA_PREFIX=$TESSDATA_PREFIX" >> /etc/bash.bashrc
 
 # Create a non-root user
 RUN useradd --create-home appuser \
