@@ -18,6 +18,7 @@ faiss-cpu
 autogen-core
 autogen-ext
 autogen-agentchat
+autogen
 yfinance
 pytz
 numpy

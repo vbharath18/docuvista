@@ -6,6 +6,8 @@ from crewai_tools import FileReadTool, FileWriterTool
 
 def process_with_crew():
     """Process the markdown file with CrewAI"""
+    
+    # Initialize the LLM with environment variables for API configuration
     llm = LLM(
         api_version=os.environ.get("AZURE_OPENAI_VERSION"),
         model=os.environ.get("AZURE_OPENAI_DEPLOYMENT"),
@@ -13,9 +15,11 @@ def process_with_crew():
         api_key=os.environ.get("AZURE_OPENAI_API_KEY")
     )
     
+    # Initialize file read and write tools
     file_read_tool = FileReadTool()
     file_writer_tool = FileWriterTool()
     
+    # Define an agent for extracting and processing data
     csv_agent = Agent(
         role="Extract, process data and record data",
         goal="""Extract tests and results as instructed. The result MUST be valid CSV.""",
@@ -24,6 +28,7 @@ def process_with_crew():
         llm=llm,
     )
     
+    # Define a task to create a CSV from the markdown file
     create_CSV = Task(
         description=""" 
                 Analyse './data/ocr.md' the data provided - it is in Markdown format. 
@@ -44,6 +49,7 @@ def process_with_crew():
         tools=[file_read_tool]
     )
     
+    # Define a task to add an observation column to the CSV
     add_observation = Task(
         description=""" 
                 Analyse CSV data and calculate the observation of each test results in
@@ -56,10 +62,12 @@ def process_with_crew():
         tools=[file_read_tool]
     )
     
+    # Create a crew with the defined agents and tasks
     crew = Crew(
         agents=[csv_agent, csv_agent],
         tasks=[create_CSV, add_observation],
         verbose=False,
     )
     
+    # Start the processing with the crew
     return crew.kickoff()
