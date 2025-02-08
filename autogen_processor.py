@@ -12,7 +12,7 @@ load_dotenv()
 
 # Initialize the model client using environment variables
 model_client = AzureOpenAIChatCompletionClient(
-    model="gpt-4o",
+    model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     api_version=os.environ.get("AZURE_OPENAI_VERSION")
@@ -33,16 +33,22 @@ async def main():
     # Task 1: Extract CSV from Markdown
     extraction_agent = AssistantAgent(
         "ExtractionAgent",
-        description="Extract test results from markdown to CSV",
+        description="Extract tests and results as instructed. The result MUST be valid CSV.",
         model_client=model_client,
         system_message="""
-Extract tests and results from the provided markdown file.
-Ensure that string data is enclosed in quotes.
-Columns: "Test type", "Test", "Result", "Unit", "Interval".
-Do not add extra columns. Leave columns empty if not applicable.
-Output must be valid CSV without markdown formatting.
-Do not use function calling.
-        """
+            Extract tests and results from the provided markdown file.
+            Ensure that string data is enclosed in quotes.
+            Columns: 
+                "Test type": Name of the test type is found after Patient Information,                
+                "Test": Name of the test, 
+                "Result": Result of the test, 
+                "Unit": Unit of the test, 
+                "Interval": Biological reference interval.
+            Do not add extra columns. Leave columns empty if not applicable.
+            Output must be valid CSV without markdown formatting.
+            Do not use function calling.
+            Respond without using Markdown code fences.
+            """
     )
     
     team1 = MagenticOneGroupChat(
@@ -63,10 +69,11 @@ Do not use function calling.
         description="Add sentiment observation column to CSV",
         model_client=model_client,
         system_message="""
-Given CSV content, add a new column named "Observation" that provides a sentiment analysis of each test result.
-Ensure output is valid CSV without markdown formatting.
-Do not use function calling.
-        """
+            Given CSV content, add a new column named "Observation" that provides a sentiment analysis of each test result.
+            Ensure output is valid CSV without markdown formatting.
+            Do not use function calling.
+            Respond without using Markdown code fences.
+            """
     )
     
     team2 = MagenticOneGroupChat(
