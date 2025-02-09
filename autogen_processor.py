@@ -90,5 +90,10 @@ async def main():
     
     print("Processing complete. CSV files saved to './data/rp.csv' and './data/final.csv'.")
 
+
+async def process_with_autogen():
+    await main()
+
+
 if __name__ == "__main__":
     asyncio.run(main())

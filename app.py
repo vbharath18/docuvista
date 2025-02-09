@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from rag_handler import process_pdf_for_embeddings, setup_rag
 from azure_document_processor import process_uploaded_pdf
 from crewai_processor import process_with_crew
+from autogen_processor import process_with_autogen
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -118,6 +120,11 @@ with tabs[0]:
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
     
     if uploaded_file is not None:
+        processing_option = st.radio(
+            "Choose processing option:",
+            ("Use CrewAI", "Use AutoGen")
+        )
+        
         if st.button("Process Document"):
             with st.spinner("Processing document..."):
                 try:
@@ -125,8 +132,13 @@ with tabs[0]:
                     success = process_uploaded_pdf(uploaded_file)
                     
                     if success:
-                        st.info("Step 2/3: Extracting relevant data & generating reports using AI agents...")
-                        crew_result = process_with_crew()
+                        if processing_option == "Use CrewAI":
+                            st.info("Step 2/3: Extracting relevant data & generating reports using CrewAI...")
+                            crew_result = process_with_crew()
+                        else:
+                            st.info("Step 2/3: Extracting relevant data & generating reports using AutoGen...")
+                            # Call the AutoGen processing function here
+                            asyncio.run(process_with_autogen())
                         
                         st.info("Step 3/3: Initializing Q&A system...")
                         get_rag_chain.clear()
