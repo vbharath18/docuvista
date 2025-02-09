@@ -66,10 +66,10 @@ async def main():
     # Task 2: Add Observation Column to CSV
     observation_agent = AssistantAgent(
         "ObservationAgent",
-        description="Add sentiment observation column to CSV",
+        description="Perform sentiment analysis of each test result",
         model_client=model_client,
         system_message="""
-            Given CSV content, add a new column named "Observation" that provides a sentiment analysis of each test result.
+            Given CSV content, add a new column named "Observation".
             Ensure output is valid CSV without markdown formatting.
             Do not use function calling.
             Respond without using Markdown code fences.

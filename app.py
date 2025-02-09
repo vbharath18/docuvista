@@ -128,7 +128,7 @@ with tabs[0]:
         if st.button("Process Document"):
             with st.spinner("Processing document..."):
                 try:
-                    st.info("Step 1/3: Converting document to OCR format...")
+                    st.info("Step 1/3: Converting scanned document to a machine readable format...")
                     success = process_uploaded_pdf(uploaded_file)
                     
                     if success:
