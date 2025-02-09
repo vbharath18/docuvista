@@ -198,7 +198,7 @@ with tabs[1]:
                             df,
                             x="Observation",
                             color="Test type",
-                            title="Observation Distribution Analysis",
+                            title="Observation Analysis Distribution",
                             template="plotly_white",
                             height=300
                         )
