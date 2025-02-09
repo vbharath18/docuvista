@@ -52,8 +52,8 @@ def process_with_crew():
     # Define a task to add an observation column to the CSV
     add_observation = Task(
         description=""" 
-                Analyse CSV data and calculate the observation of each test results in
-                the 'Observation' column. Your output should be in CSV format. Respond without using Markdown code fences.  
+                Analyse CSV data and perform sentiment analysis of each test result and add it 
+                to the 'Observation' column. Your output should be in CSV format. Respond without using Markdown code fences.  
                 """,
         expected_output="A correctly formatted CSV data file",
         agent=csv_agent,
