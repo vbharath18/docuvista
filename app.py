@@ -121,7 +121,7 @@ with tabs[0]:
     
     if uploaded_file is not None:
         processing_option = st.radio(
-            "Choose processing option:",
+            "Choose which Agentic AI framework you want to use for the processing:",
             ("Use CrewAI", "Use AutoGen")
         )
         

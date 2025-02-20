@@ -1,5 +1,5 @@
-crewai==0.86.0
-crewai-tools==0.17.0
+crewai
+crewai-tools
 ipywidgets
 matplotlib
 pandas
@@ -15,13 +15,14 @@ python-dotenv
 azure-identity
 PyMuPDF
 faiss-cpu
-autogen-core
-autogen-ext
-autogen-agentchat
-autogen
 yfinance
 pytz
 numpy
 requests
 bs4
-docling
+autogen_agentchat
+autogen-core
+autogen_ext
+pdf2image
+pytesseract
+PyPDF2

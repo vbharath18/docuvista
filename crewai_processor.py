@@ -4,6 +4,8 @@ import os
 from crewai import Agent, Task, Crew, LLM
 from crewai_tools import FileReadTool, FileWriterTool
 
+os.environ['OTEL_SDK_DISABLED'] = 'true'
+
 def process_with_crew():
     """Process the markdown file with CrewAI"""
     
@@ -46,7 +48,8 @@ def process_with_crew():
         expected_output="A correctly formatted CSV data structure with only",
         agent=csv_agent,
         output_file="./data/rp.csv",
-        tools=[file_read_tool]
+        tools=[file_read_tool],
+        max_retries=1
     )
     
     # Define a task to add an observation column to the CSV
@@ -58,7 +61,8 @@ def process_with_crew():
         expected_output="A correctly formatted CSV data file",
         agent=csv_agent,
         output_file="./data/final.csv",
-        tools=[file_read_tool]
+        tools=[file_read_tool],
+        max_retries=1
     )
     
     # Create a crew with the defined agents and tasks
@@ -67,6 +71,6 @@ def process_with_crew():
         tasks=[create_CSV, add_observation],
         verbose=True,
     )
-    
+
     # Start the processing with the crew
     return crew.kickoff()

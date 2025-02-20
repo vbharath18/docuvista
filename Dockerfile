@@ -10,6 +10,7 @@ RUN apt-get update \
         libtesseract-dev \
         libleptonica-dev \
         pkg-config \
+        poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
