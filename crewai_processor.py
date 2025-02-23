@@ -37,7 +37,7 @@ def process_with_crew():
                 Your output should be in CSV format. Respond without using Markdown code fences.
                 Your task is to:
                    Ensure that string data is enclosed in quotes.
-                   Each item in the list should have its columns populated as follows. No additional columns should be added.
+                   Each item in the list should have its columns populated as follows. Use pydantic schema validation.
                         "Test type": Name of the test type is found after Patient Information,                
                         "Test": Name of the test, 
                         "Result": Result of the test, 
@@ -56,7 +56,8 @@ def process_with_crew():
     add_observation = Task(
         description=""" 
                 Analyse CSV data and perform sentiment analysis of each test result and add it 
-                to the 'Observation' column. Your output should be in CSV format. Respond without using Markdown code fences.  
+                to the 'Observation' column. Your output should be in CSV format. Respond without using Markdown code fences. 
+                Use pydantic schema validation. 
                 """,
         expected_output="A correctly formatted CSV data file",
         agent=csv_agent,
