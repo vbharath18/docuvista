@@ -13,6 +13,11 @@ def process_uploaded_pdf(uploaded_file):
     # Ensure the data directory exists
     os.makedirs("./data", exist_ok=True)
     
+    # Check if output files already exist
+    if os.path.exists("./data/ocr.md") and os.path.exists("./data/ocr_searchable.pdf"):
+        print("Output files already exist. Skipping document processing.")
+        return True
+    
     # Save uploaded file temporarily
     temp_path = f"./data/temp_{uploaded_file.name}"
     with open(temp_path, "wb") as f:
