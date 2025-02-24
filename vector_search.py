@@ -68,6 +68,7 @@ def semantic_search(query, k, filter=None):
         return None
     
     results = vector_store.similarity_search(query, k=k, filter=filter)
+
     # for res in results:
     #     print(f"* {res.page_content}")
     return results

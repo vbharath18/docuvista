@@ -30,6 +30,8 @@ llm = AzureChatOpenAI(
     api_key=azure_openai_api_key,
     api_version="2024-02-15-preview",
     deployment_name=azure_deployment_name,  # Add your deployment name here
+    logprobs=True,
+    top_logprobs=1
 )
 
 # Ensure the vector store is initialized
