@@ -7,7 +7,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 import pandas as pd
-from vector_search import process_markdown_for_embeddings, setup_rag, semantic_search, is_vector_store_initialized
+from vector_search import process_markdown_for_embeddings, setup_rag
 
 # Load environment variables
 load_dotenv()
@@ -30,19 +30,19 @@ llm = AzureChatOpenAI(
     api_key=azure_openai_api_key,
     api_version="2024-02-15-preview",
     deployment_name=azure_deployment_name,  # Add your deployment name here
-    logprobs=True,
-    top_logprobs=1
 )
 
-# Ensure the vector store is initialized
-document_splits = process_markdown_for_embeddings()
-rag_chain = setup_rag(document_splits)
+def get_rag_chain(file_path: str):
+    """Cache the RAG chain setup to avoid reprocessing"""
+    document_splits = process_markdown_for_embeddings()
+    return setup_rag(document_splits)
 
+
+rag_chain = get_rag_chain("./data/ocr.md")  
 
 
 class Demographics(BaseModel):
     """Information about a person."""
-
     patient_first_name: Optional[str] = Field(
         default=None, description="First Name of the patient"
     )
@@ -53,23 +53,13 @@ class Demographics(BaseModel):
 
     @field_validator('patient_first_name', 'patient_last_name', mode='after')  
     @classmethod
-    def validate_name(cls, value: str, info: ValidationInfo) -> str:
-        if not value:
-            return value
-        try:
-            if not is_vector_store_initialized():
-                return value  # Skip validation if vector store isn't ready
-            answer = semantic_search(value, k=1)
-            
-            print(f"Validation result for {value}: {answer}")
-
-            if not any(value in result.page_content for result in answer):
-                print(f"Warning: Could not verify {value} in the knowledge base")
-            return value
-        except Exception as e:
-            print(f"Warning: Validation error for {value}: {str(e)}")
-            return value
-
+    def citation_exists(cls, value: str) -> str:
+        answer = rag_chain.invoke(value)
+        print("BBBB"+ answer)
+        if value not in answer:
+            raise ValueError(f'{value} is not correct')
+        return value 
+    
     patient_dob: Optional[date] = Field(
         default=None, description="Date of birth of the patient in YYYY-MM-DD format"
     )
@@ -97,45 +87,23 @@ def process_text(text_input):
         prompt_template = PromptTemplate(input_variables=["text"], template="{text}")
         prompt = prompt_template.invoke({"text": text_input})
         result = structured_llm.invoke(prompt)
-        
-        if not result.people:
-            return "No data was extracted from the text"
 
-        # Create lists with consistent lengths
-        data_lists = []
-        for person in result.people:
-            person_data = {
-                "First Name": person.patient_first_name or "",
-                "Last Name": person.patient_last_name or "",
-                "Date of Birth": person.patient_dob or None,
-                "Phone": person.patient_phone or "",
-                "Address": person.patient_address or "",
-                "Sex": person.patient_sex or ""
-            }
-            data_lists.append(person_data)
-
-        if not data_lists:
-            return "No valid data extracted"
-
-        df = pd.DataFrame(data_lists)
-        return df
-
+        # Convert the results to a pandas DataFrame
+        data = {
+            "First Name": [person.patient_first_name for person in result.people],
+            "Last Name": [person.patient_last_name for person in result.people],
+            "Date of Birth": [person.patient_dob for person in result.people],
+            "Phone": [person.patient_phone for person in result.people],
+            "Address": [person.patient_address for person in result.people],
+            "Sex": [person.patient_sex for person in result.people],
+        }
+        return pd.DataFrame(data)
     except Exception as e:
-        print(f"Error during processing: {str(e)}")  # For debugging
         return f"Error processing the text: {str(e)}"
 
-# Update file reading with proper path handling
-import os.path
-
-default_text = "Please input text to extract demographics."
-ocr_file_path = os.path.join(os.path.dirname(__file__), 'data', 'ocr.md')
-
-try:
-    if os.path.exists(ocr_file_path):
-        with open(ocr_file_path, 'r', encoding='utf-8') as file:
-            default_text = file.read()
-except Exception as e:
-    print(f"Warning: Could not read OCR file: {str(e)}")
+# Read default content from OCR markdown file
+with open('./data/ocr.md', 'r', encoding='utf-8') as file:
+    default_text = file.read()
 
 # Create Gradio interface
 demo = gr.Interface(
