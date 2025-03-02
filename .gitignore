@@ -8,3 +8,4 @@ data/rp.csv
 data/faiss_index/index.faiss
 data/faiss_index/index.pkl
 __pycache__/autogen_processor.cpython-311.pyc
+.env
