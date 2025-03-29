@@ -14,10 +14,10 @@ azure-search-documents
 python-dotenv
 azure-identity
 PyMuPDF
-faiss-cpu
+faiss-cpu>=1.7.4
 yfinance
 pytz
-numpy
+numpy>=1.24.0
 requests
 bs4
 autogen_agentchat
