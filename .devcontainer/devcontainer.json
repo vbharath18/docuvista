@@ -7,9 +7,7 @@
     "vscode": {
       "extensions": [
         "ms-toolsai.jupyter",
-        "ms-python.python",
-        "github.copilot",
-        "github.copilot-chat"
+        "ms-python.python"
       ]
     }
   }
