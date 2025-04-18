@@ -125,6 +125,10 @@ with tabs[0]:
     st.header("Upload Document")
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
     if uploaded_file is not None:
+        ocr_option = st.radio(
+            "Choose OCR method:",
+            ("Tesseract OCR", "Azure Document Intelligence")
+        )
         processing_option = st.radio(
             "Choose which Agentic AI framework you want to use for the processing:",
             ("Use CrewAI", "Use AutoGen")
@@ -135,7 +139,11 @@ with tabs[0]:
                 try:
                     st.info("Step 1/3: Converting scanned document to a machine readable format...")
                     progress_bar.progress(10, text="Converting scanned document...")
-                    success = process_uploaded_pdf(uploaded_file)
+                    if ocr_option == "Azure Document Intelligence":
+                        success = process_uploaded_pdf(uploaded_file)
+                    else:
+                        from processor.tesseract_processor import process_uploaded_pdf_with_tesseract
+                        success = process_uploaded_pdf_with_tesseract(uploaded_file)
                     progress_bar.progress(40, text="Document converted. Extracting data...")
                     if success:
                         log_container = st.empty()
