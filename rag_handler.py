@@ -46,11 +46,21 @@ def setup_rag(document_splits=None):
     """Initialize RAG components with document embedding using FAISS"""
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    
-    # Initialize embeddings
+    azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+    azure_openai_api_version = os.getenv("AZURE_OPENAI_VERSION")
+    azure_embedding_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_EMBEDDINGS")  # NEW
+
+    # Check for embedding deployment name
+    if not azure_embedding_deployment:
+        raise ValueError("AZURE_OPENAI_DEPLOYMENT_EMBEDDINGS environment variable is not set or is incorrect. Please set it to your Azure OpenAI Embeddings deployment name.")
+
+    # Optionally log for debugging
+    logging.info(f"Using Azure OpenAI Embeddings deployment: {azure_embedding_deployment}")
+
+    # Initialize embeddings with the correct embedding deployment name
     embeddings = AzureOpenAIEmbeddings(
-        azure_deployment="text-embedding-ada-002",
-        openai_api_version="2023-05-15",
+        azure_deployment=azure_embedding_deployment,  # CHANGED
+        openai_api_version=azure_openai_api_version,
         azure_endpoint=azure_endpoint,
         api_key=azure_openai_api_key,
     )
@@ -71,8 +81,8 @@ def setup_rag(document_splits=None):
     # Initialize retriever and LLM
     retriever = vector_store.as_retriever(search_kwargs={"k": 3})
     llm = AzureChatOpenAI(
-        openai_api_version="2024-08-01-preview",
-        azure_deployment="gpt-4o-mini",
+        openai_api_version=os.getenv("AZURE_OPENAI_VERSION"),
+        azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
         temperature=0,
     )
     
