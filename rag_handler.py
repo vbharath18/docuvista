@@ -63,12 +63,16 @@ def setup_rag(document_splits: list = None):
     )
 
     faiss_index_path = Path("./data/faiss_index")
+    faiss_index_file = faiss_index_path / "index.faiss"
     try:
         if document_splits:
             vector_store = FAISS.from_documents(document_splits, embeddings)
             vector_store.save_local(str(faiss_index_path))
         else:
-            vector_store = FAISS.load_local(str(faiss_index_path), embeddings)
+            if not faiss_index_file.exists():
+                logging.error(f"FAISS index file not found at {faiss_index_file}. Please build the index first by providing document_splits.")
+                return None
+            vector_store = FAISS.load_local(str(faiss_index_path), embeddings, allow_dangerous_deserialization=True)
     except Exception as e:
         logging.error(f"Error initializing FAISS vector store: {e}")
         return None

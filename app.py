@@ -14,6 +14,7 @@ from rag_handler import process_pdf_for_embeddings, setup_rag
 from processor.azure_document_processor import process_uploaded_pdf
 from processor.crewai_processor import process_with_crew
 from processor.autogen_processor import process_with_autogen
+from processor.gpt4v_processor import process_uploaded_pdf_with_gpt4v
 from streamlit_helpers import StreamToStreamlit, render_log_to_streamlit, redirect_stdout_to_streamlit, capture_stdout
 
 # --- Environment & Logging ---
@@ -127,7 +128,7 @@ with tabs[0]:
     if uploaded_file is not None:
         ocr_option = st.radio(
             "Choose OCR method:",
-            ("Tesseract OCR", "Azure Document Intelligence")
+            ("Tesseract OCR", "Azure Document Intelligence", "GPT-4V (Azure OpenAI Vision)")
         )
         processing_option = st.radio(
             "Choose which Agentic AI framework you want to use for the processing:",
@@ -141,6 +142,8 @@ with tabs[0]:
                     progress_bar.progress(10, text="Converting scanned document...")
                     if ocr_option == "Azure Document Intelligence":
                         success = process_uploaded_pdf(uploaded_file)
+                    elif ocr_option == "GPT-4V (Azure OpenAI Vision)":
+                        success = process_uploaded_pdf_with_gpt4v(uploaded_file)
                     else:
                         from processor.tesseract_processor import process_uploaded_pdf_with_tesseract
                         success = process_uploaded_pdf_with_tesseract(uploaded_file)
@@ -365,13 +368,16 @@ with tabs[2]:
             question = st.text_input("Enter your question:")
             if st.button("Get Answer"):
                 if question:
-                    with st.spinner("Generating answer..."):
-                        try:
-                            st.session_state.answer = rag_chain.invoke(question)
-                            st.write("Answer:", st.session_state.answer)
-                        except Exception as e:
-                            logging.error(f"Error generating answer: {e}")
-                            st.error(f"Error generating answer: {str(e)}")
+                    if rag_chain is not None:
+                        with st.spinner("Generating answer..."):
+                            try:
+                                st.session_state.answer = rag_chain.invoke(question)
+                                st.write("Answer:", st.session_state.answer)
+                            except Exception as e:
+                                logging.error(f"Error generating answer: {e}")
+                                st.error(f"Error generating answer: {str(e)}")
+                    else:
+                        st.error("Q&A system is not initialized. Please reprocess the document or check for errors in document processing.")
                 else:
                     st.warning("Please enter a question")
             elif st.session_state.answer:
