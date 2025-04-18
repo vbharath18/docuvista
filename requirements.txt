@@ -25,5 +25,5 @@ autogen-core
 autogen_ext
 pdf2image
 pytesseract
-PyPDF2
+pypdf
 gradio>=4.0.0

@@ -3,7 +3,7 @@ from pathlib import Path
 from pdf2image import convert_from_path
 import pytesseract
 import tempfile
-from PyPDF2 import PdfMerger
+from pypdf import PdfMerger
 import io
 from PIL import Image, ImageFilter, ImageEnhance
 
@@ -36,7 +36,7 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
     import tempfile
     from pdf2image import convert_from_path
     import pytesseract
-    from PyPDF2 import PdfMerger
+    from pypdf import PdfMerger
     import io
     from PIL import Image, ImageFilter, ImageEnhance
 
