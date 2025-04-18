@@ -1,0 +1,8 @@
+{
+    "servers": {
+        "my-mcp-server-1f5ca2d5": {
+            "type": "sse",
+            "url": "https://langchain-ai.github.io/langgraph/llms-full.txt"
+        }
+    }
+}
