@@ -11,9 +11,9 @@ import fitz  # PyMuPDF
 from dotenv import load_dotenv
 
 from rag_handler import process_pdf_for_embeddings, setup_rag
-from azure_document_processor import process_uploaded_pdf
-from crewai_processor import process_with_crew
-from autogen_processor import process_with_autogen
+from processor.azure_document_processor import process_uploaded_pdf
+from processor.crewai_processor import process_with_crew
+from processor.autogen_processor import process_with_autogen
 from streamlit_helpers import StreamToStreamlit, render_log_to_streamlit, redirect_stdout_to_streamlit, capture_stdout
 
 # --- Environment & Logging ---
