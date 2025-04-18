@@ -1,8 +1,28 @@
 {
     "servers": {
-        "my-mcp-server-1f5ca2d5": {
-            "type": "sse",
-            "url": "https://langchain-ai.github.io/langgraph/llms-full.txt"
-        }
+      "langgraph-docs-mcp": {
+        "command": "uvx",
+        "args": [
+          "--from",
+          "mcpdoc",
+          "mcpdoc",
+          "--urls",
+          "LangGraph:https://langchain-ai.github.io/langgraph/llms.txt LangChain:https://python.langchain.com/llms.txt",
+          "--transport",
+          "stdio"
+        ]
+      },
+      "crewai-docs-mcp": {
+        "command": "uvx",
+        "args": [
+          "--from",
+          "mcpdoc",
+          "mcpdoc",
+          "--urls",
+          "CrewAI:https://docs.crewai.com/llms-full.txt",
+          "--transport",
+          "stdio"
+        ]
+      }
     }
-}
+  }

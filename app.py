@@ -98,7 +98,7 @@ def validate_dataframe(df: pd.DataFrame) -> bool:
     missing_viz_columns = [col for col in viz_columns if col not in df.columns]
     if missing_viz_columns:
         st.warning(f"Some visualization columns are missing: {', '.join(missing_viz_columns)}")
-    df.columns = df.columns.str.strip()
+    df.columns = df.columns.map(str).str.strip()
     if df.empty:
         st.error("DataFrame is empty")
         return False
@@ -185,7 +185,7 @@ with tabs[1]:
                 st.dataframe(df, use_container_width=True)
         with viz_col:
             st.markdown("### 📈 Key Insights")
-            df.columns = df.columns.str.strip()
+            df.columns = df.columns.map(str).str.strip()
             if not validate_dataframe(df):
                 st.warning("Cannot create visualizations. Data format is incorrect or missing required columns.")
             else:
