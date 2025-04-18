@@ -95,6 +95,79 @@ def validate_dataframe(df: pd.DataFrame) -> bool:
         
     return True
 
+# --- Helper Classes ---
+import io
+import sys
+
+class StreamToStreamlit(io.StringIO):
+    """Redirects stdout to a Streamlit container with colorized logs."""
+    def __init__(self, container):
+        super().__init__()
+        self.container = container
+        self.log = ""
+    def write(self, s):
+        self.log += s
+        self._render_log()
+        return len(s)
+    def flush(self):
+        pass
+    def _render_log(self):
+        html_log = ""
+        for line in self.log.splitlines():
+            if "ERROR" in line:
+                html_log += f'<div style="color:#ff4b4b;">{line}</div>'
+            elif "WARNING" in line:
+                html_log += f'<div style="color:#ffa500;">{line}</div>'
+            elif "INFO" in line:
+                html_log += f'<div style="color:#1e90ff;">{line}</div>'
+            else:
+                html_log += f'<div style="color:#d3d3d3;">{line}</div>'
+        self.container.markdown(
+            f'''<div style="height:350px;overflow-y:auto;background:#181818;padding:8px;border-radius:6px;font-size:13px;">{html_log}</div>''',
+            unsafe_allow_html=True
+        )
+
+def render_log_to_streamlit(log_container, log_text):
+    """Render log text to a Streamlit container with colorization."""
+    html_log = ""
+    for line in log_text.splitlines():
+        if "ERROR" in line:
+            html_log += f'<div style="color:#ff4b4b;">{line}</div>'
+        elif "WARNING" in line:
+            html_log += f'<div style="color:#ffa500;">{line}</div>'
+        elif "INFO" in line:
+            html_log += f'<div style="color:#1e90ff;">{line}</div>'
+        else:
+            html_log += f'<div style="color:#d3d3d3;">{line}</div>'
+    log_container.markdown(
+        f'''<div style="height:350px;overflow-y:auto;background:#181818;padding:8px;border-radius:6px;font-size:13px;">{html_log}</div>''',
+        unsafe_allow_html=True
+    )
+
+from contextlib import contextmanager
+
+@contextmanager
+def redirect_stdout_to_streamlit(container):
+    """Context manager to redirect stdout to Streamlit log container."""
+    stream = StreamToStreamlit(container)
+    old_stdout = sys.stdout
+    sys.stdout = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+
+@contextmanager
+def capture_stdout():
+    """Context manager to capture stdout into a StringIO buffer."""
+    buffer = io.StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = buffer
+    try:
+        yield buffer
+    finally:
+        sys.stdout = old_stdout
+
 # --- App Initialization ---
 if 'needs_reload' not in st.session_state:
     st.session_state.needs_reload = True
@@ -126,30 +199,38 @@ with tabs[0]:
         )
         
         if st.button("Process Document"):
+            progress_bar = st.progress(0, text="Starting document processing...")
             with st.spinner("Processing document..."):
                 try:
                     st.info("Step 1/3: Converting scanned document to a machine readable format...")
+                    progress_bar.progress(10, text="Converting scanned document...")
                     success = process_uploaded_pdf(uploaded_file)
-                    
+                    progress_bar.progress(40, text="Document converted. Extracting data...")
                     if success:
+                        log_container = st.empty()
                         if processing_option == "Use CrewAI":
                             st.info("Step 2/3: Extracting relevant data & generating reports using CrewAI...")
-                            crew_result = process_with_crew()
+                            with redirect_stdout_to_streamlit(log_container):
+                                crew_result = process_with_crew()
                         else:
                             st.info("Step 2/3: Extracting relevant data & generating reports using AutoGen...")
-                            # Call the AutoGen processing function here
-                            asyncio.run(process_with_autogen())
-                        
+                            with capture_stdout() as log_buffer:
+                                asyncio.run(process_with_autogen())
+                            render_log_to_streamlit(log_container, log_buffer.getvalue())
+                        progress_bar.progress(80, text="Initializing Q&A system...")
                         st.info("Step 3/3: Initializing Q&A system...")
                         get_rag_chain.clear()
                         _ = get_rag_chain("./data/ocr_searchable.pdf")
-                        
+                        progress_bar.progress(100, text="Done!")
                         st.session_state.needs_reload = True
                         st.session_state.files_ready = True
                         st.success("Document processed successfully! You can now use the Report, Search, and Q&A tabs.")
+                        progress_bar.empty()
                     else:
+                        progress_bar.empty()
                         st.error("Failed to process document")
                 except Exception as e:
+                    progress_bar.empty()
                     st.error(f"Error processing document: {str(e)}")
 
 # --- Report ---
