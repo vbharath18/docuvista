@@ -191,27 +191,64 @@ with tabs[1]:
             else:
                 with st.spinner("Loading charts..."):
                     try:
-                        fig_bar = px.bar(
+                        # Try to convert 'Result' to numeric for meaningful plots
+                        df_numeric = df.copy()
+                        df_numeric["Result_numeric"] = pd.to_numeric(df_numeric["Result"], errors="coerce")
+                        has_numeric = df_numeric["Result_numeric"].notnull().any()
+
+                        # Pie chart: Distribution of Test type
+                        fig_pie = px.pie(
                             df,
-                            x="Observation",
-                            y="Test",
-                            color="Test type",
-                            title="Test Analysis Distribution",
-                            template="plotly_white",
+                            names="Test type",
+                            title="Distribution of Test Types",
+                            hole=0.4,
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        fig_pie.update_traces(textinfo='percent+label')
+                        st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
+
+                        if has_numeric:
+                            # Grouped bar: Average Result by Test and Test type
+                            fig_grouped = px.bar(
+                                df_numeric.dropna(subset=["Result_numeric"]),
+                                x="Test",
+                                y="Result_numeric",
+                                color="Test type",
+                                barmode="group",
+                                title="Average Result by Test and Test Type",
+                                labels={"Result_numeric": "Average Result"},
+                                height=350
+                            )
+                            fig_grouped.update_layout(margin=dict(t=30, b=40, l=20, r=20), xaxis_tickangle=-45)
+                            st.plotly_chart(fig_grouped, use_container_width=True, config={'displayModeBar': False})
+
+                            # Box plot: Result distribution by Test type
+                            fig_box = px.box(
+                                df_numeric.dropna(subset=["Result_numeric"]),
+                                x="Test type",
+                                y="Result_numeric",
+                                points="all",
+                                color="Test type",
+                                title="Result Distribution by Test Type",
+                                labels={"Result_numeric": "Result"},
+                                height=350
+                            )
+                            fig_box.update_layout(margin=dict(t=30, b=40, l=20, r=20))
+                            st.plotly_chart(fig_box, use_container_width=True, config={'displayModeBar': False})
+                        else:
+                            st.info("'Result' column is not numeric. Showing only categorical insights.")
+
+                        # Bar chart: Count of Observations by Test type
+                        fig_obs = px.bar(
+                            df,
+                            x="Test type",
+                            color="Observation",
+                            title="Observation Counts by Test Type",
+                            labels={"count": "Count"},
                             height=300
                         )
-                        fig_bar.update_layout(margin=dict(t=30, b=40, l=20, r=20))
-                        st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
-                        fig_hist = px.histogram(
-                            df,
-                            x="Observation",
-                            color="Test type",
-                            title="Observation Analysis Distribution",
-                            template="plotly_white",
-                            height=300
-                        )
-                        fig_hist.update_layout(margin=dict(t=30, b=40, l=20, r=20))
-                        st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
+                        fig_obs.update_layout(margin=dict(t=30, b=40, l=20, r=20))
+                        st.plotly_chart(fig_obs, use_container_width=True, config={'displayModeBar': False})
                     except Exception as e:
                         logging.error(f"Error creating visualizations: {e}")
                         st.error(f"Error creating visualizations: {str(e)}")
