@@ -3,7 +3,7 @@ from pathlib import Path
 from pdf2image import convert_from_path
 import pytesseract
 import tempfile
-from pypdf import PdfMerger
+from pypdf import PdfWriter, PdfReader
 import io
 from PIL import Image, ImageFilter, ImageEnhance
 
@@ -36,7 +36,7 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
     import tempfile
     from pdf2image import convert_from_path
     import pytesseract
-    from pypdf import PdfMerger
+    from pypdf import PdfWriter, PdfReader
     import io
     from PIL import Image, ImageFilter, ImageEnhance
 
@@ -69,7 +69,7 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
             fmt='png',
             dpi=300
         )
-        merger = PdfMerger()
+        writer = PdfWriter()
         md_output = []
         for i, image in enumerate(images):
             try:
@@ -87,7 +87,9 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
                     config=tess_config
                 )
                 pdf_file_in_memory = io.BytesIO(pdf_bytes)
-                merger.append(pdf_file_in_memory)
+                reader = PdfReader(pdf_file_in_memory)
+                for page in reader.pages:
+                    writer.add_page(page)
                 # Add page text to markdown output
                 md_output.append(f"\n\n## Page {i+1}\n\n{text.strip()}")
             except Exception as e:
@@ -95,8 +97,7 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
                 continue
         # Write the merged PDF to file
         with open("./data/ocr_searchable.pdf", "wb") as f:
-            merger.write(f)
-        merger.close()
+            writer.write(f)
         # Write the markdown output
         with open("./data/ocr.md", "w", encoding="utf-8") as f:
             f.write("\n".join(md_output))
@@ -123,8 +124,8 @@ def main():
             dpi=300
         )
 
-        # Initialize the PDF merger
-        merger = PdfMerger()
+        # Initialize the PDF writer
+        writer = PdfWriter()
 
         # Initialize HOCR output
         hocr_output = []
@@ -163,9 +164,11 @@ def main():
                     config=tess_config
                 )
 
-                # Add PDF data to the merger
+                # Add PDF data to the writer
                 pdf_file_in_memory = io.BytesIO(pdf_bytes)
-                merger.append(pdf_file_in_memory)
+                reader = PdfReader(pdf_file_in_memory)
+                for page in reader.pages:
+                    writer.add_page(page)
 
                 # Add HOCR data to the output list
                 if isinstance(hocr_bytes, bytes):
@@ -191,8 +194,7 @@ def main():
 
         # Write the merged PDF to file
         with output_pdf_path.open("wb") as f:
-            merger.write(f)
-        merger.close()
+            writer.write(f)
 
         # Write the combined HOCR to file
         with output_hocr_path.open("w", encoding='utf-8') as f:

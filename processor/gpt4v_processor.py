@@ -4,7 +4,7 @@ import tempfile
 import logging
 from pathlib import Path
 from pdf2image import convert_from_path
-from pypdf import PdfMerger
+# Removed deprecated PdfMerger import
 from PIL import Image
 import requests
 import concurrent.futures
