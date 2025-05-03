@@ -6,6 +6,7 @@ import tempfile
 from pypdf import PdfWriter, PdfReader
 import io
 from PIL import Image, ImageFilter, ImageEnhance
+from .utils import ensure_data_dir, save_uploaded_file, cleanup_file
 
 _log = logging.getLogger(__name__)
 
@@ -32,35 +33,14 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
     """
     Process uploaded PDF using Tesseract OCR, outputting markdown and searchable PDF.
     """
-    import os
-    import tempfile
-    from pdf2image import convert_from_path
-    import pytesseract
-    from pypdf import PdfWriter, PdfReader
-    import io
-    from PIL import Image, ImageFilter, ImageEnhance
-
-    # Ensure the data directory exists
-    os.makedirs("./data", exist_ok=True)
+    ensure_data_dir()
 
     # Check if output files already exist
-    if os.path.exists("./data/ocr.md") and os.path.exists("./data/ocr_searchable.pdf"):
+    if Path("./data/ocr.md").exists() and Path("./data/ocr_searchable.pdf").exists():
         print("Output files already exist. Skipping document processing.")
         return True
 
-    # Save uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
-        temp_pdf.write(uploaded_file.getbuffer())
-        temp_pdf_path = temp_pdf.name
-
-    def preprocess_image(image):
-        image = image.convert('L')
-        enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(2)
-        image = image.point(lambda x: 0 if x < 140 else 255, '1')
-        image = image.filter(ImageFilter.MedianFilter())
-        image = image.resize((image.width * 2, image.height * 2), Image.Resampling.LANCZOS)
-        return image
+    temp_pdf_path = save_uploaded_file(uploaded_file)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         images = convert_from_path(
@@ -90,18 +70,15 @@ def process_uploaded_pdf_with_tesseract(uploaded_file):
                 reader = PdfReader(pdf_file_in_memory)
                 for page in reader.pages:
                     writer.add_page(page)
-                # Add page text to markdown output
                 md_output.append(f"\n\n## Page {i+1}\n\n{text.strip()}")
             except Exception as e:
                 _log.error(f"Error during OCR processing on page {i+1}: {e}")
                 continue
-        # Write the merged PDF to file
         with open("./data/ocr_searchable.pdf", "wb") as f:
             writer.write(f)
-        # Write the markdown output
         with open("./data/ocr.md", "w", encoding="utf-8") as f:
             f.write("\n".join(md_output))
-    os.remove(temp_pdf_path)
+    cleanup_file(temp_pdf_path)
     return True
 
 def main():
@@ -200,7 +177,7 @@ def main():
         with output_hocr_path.open("w", encoding='utf-8') as f:
             f.write("\n".join(hocr_output))
 
-        with output_txt_path.open("w", encoding='utf-8') as f:
+        with output_txt_path.open("w", encoding="utf-8") as f:
             f.write("\n".join(txt_output))
 
         _log.info(f"OCR processing completed. PDF output saved to {output_pdf_path}")

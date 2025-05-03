@@ -4,24 +4,21 @@ from dotenv import load_dotenv
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeOutputOption
+from .utils import ensure_data_dir, save_uploaded_file, cleanup_file
 
 # Load environment variables
 load_dotenv()
 
 def process_uploaded_pdf(uploaded_file):
     """Process uploaded PDF using Azure Document Intelligence"""
-    # Ensure the data directory exists
-    os.makedirs("./data", exist_ok=True)
+    ensure_data_dir()
     
     # Check if output files already exist
     if os.path.exists("./data/ocr.md") and os.path.exists("./data/ocr_searchable.pdf"):
         print("Output files already exist. Skipping document processing.")
         return True
     
-    # Save uploaded file temporarily
-    temp_path = f"./data/temp_{uploaded_file.name}"
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    temp_path = save_uploaded_file(uploaded_file)
     
     # Initialize Azure Document Intelligence client
     endpoint = os.environ["AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"]
@@ -58,6 +55,5 @@ def process_uploaded_pdf(uploaded_file):
     with open("./data/ocr_searchable.pdf", "wb") as writer:
         writer.writelines(response)
     
-    # Clean up temp file
-    os.remove(temp_path)
+    cleanup_file(temp_path)
     return True
